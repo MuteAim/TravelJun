@@ -1,4 +1,5 @@
 import React from 'react';
+import { useRouter } from 'next/navigation'; // 페이지 이동을 위한 useRouter import
 
 interface ModalProps {
   isOpen: boolean;
@@ -7,7 +8,13 @@ interface ModalProps {
 }
 
 const Modal: React.FC<ModalProps> = ({ isOpen, onClose, selectedCity }) => {
-  if (!isOpen) return null; // 모달이 열리지 않았을 경우 렌더링하지 않음
+  const router = useRouter();
+
+  if (!isOpen) return null;
+
+  const handleCreateSchedule = () => {
+    router.push('/travel'); // 일정 만들기 페이지로 이동
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -17,8 +24,13 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, selectedCity }) => {
         <div className="mt-4">
           <button
             onClick={onClose}
-            className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">
+            className="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 mr-4">
             닫기
+          </button>
+          <button
+            onClick={handleCreateSchedule}
+            className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">
+            일정 만들기
           </button>
         </div>
       </div>
