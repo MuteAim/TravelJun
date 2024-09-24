@@ -1,17 +1,27 @@
 "use client";
 import { useState } from 'react';
+import Modal from './components/Modal';
 
 export default function MainPage() {
   const [isButtonClicked, setIsButtonClicked] = useState(false);
+  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const cities = ['서울', '도쿄', '후쿠오카', '오사카', '부산', '제주', '방콕', '다낭', '나트랑', '마카오'];
 
   const handleClick = () => {
     setIsButtonClicked(true);
   };
 
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
+
   const handleCityClick = (city: string) => {
     console.log(`Selected city: ${city}`);
     // 여기에서 원하는 동작을 추가할 수 있습니다. 예를 들어, 페이지를 이동하거나 데이터를 처리하는 로직.
+    setSelectedCity(city);
+    setIsModalOpen(true);
   };
 
   return (
@@ -62,6 +72,9 @@ export default function MainPage() {
           )}
         </div>
       </div>
+
+      {/* 모달창 컴포넌트 */}
+      <Modal isOpen={isModalOpen} onClose={closeModal} selectedCity={selectedCity} />
 
       {/* 오른쪽 */}
       <div className="flex-1">
