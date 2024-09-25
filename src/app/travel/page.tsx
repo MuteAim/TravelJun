@@ -1,16 +1,22 @@
 "use client";
-import { useState, useEffect } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { useState, useEffect, FormEvent } from "react";
+import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
+
+const containerStyle = {
+  width: '100%',
+  height: '100%',
+};
 
 export default function TravelPage() {
   const [schedule, setSchedule] = useState("");
-  const [startDate, setStartDate] = useState(""); // 시작 날짜
-  const [endDate, setEndDate] = useState(""); // 종료 날짜
-  const [showMap, setShowMap] = useState(false);
-  const [dailyPlans, setDailyPlans] = useState<{ [date: string]: { time: string; activity: string }[] }>({}); // 날짜별 계획
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [dailyPlans, setDailyPlans] = useState<{ [date: string]: { time: string; activity: string }[] }>({});
+  const [selectedPlaces, setSelectedPlaces] = useState<{ name: string; id: string }[]>([]);
+  const [placeOptions, setPlaceOptions] = useState<{ name: string; id: string }[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
 
-  // Define cities and their coordinates
   const cities: { [key: string]: { lat: number; lng: number } } = {
     서울: { lat: 37.5665, lng: 126.978 },
     도쿄: { lat: 35.6762, lng: 139.6503 },
@@ -24,9 +30,20 @@ export default function TravelPage() {
     마카오: { lat: 22.1987, lng: 113.5439 },
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    setShowMap(true); // Show the map after form submission
+    localStorage.setItem("selectedCity", selectedCity!);
+    fetchPlaces(cities[selectedCity!].lat, cities[selectedCity!].lng);
+  };
+
+  const fetchPlaces = async (lat: number, lng: number) => {
+    const apiKey = "AIzaSyBdkDWYMnnUPvxFhIxQrmUoOG5R6RNhXiE"; // 실제 API 키로 교체
+    const category = categories.join('|'); // 선택된 카테고리
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=10000&type=${category}&key=${apiKey}`
+    );
+    const data = await response.json();
+    setPlaceOptions(data.results.map((place: any) => ({ name: place.name, id: place.place_id })));
   };
 
   const handleAddDailyPlan = (date: string) => {
@@ -36,12 +53,7 @@ export default function TravelPage() {
     });
   };
 
-  const handleDailyPlanChange = (
-    date: string,
-    index: number,
-    field: string,
-    value: string
-  ) => {
+  const handleDailyPlanChange = (date: string, index: number, field: string, value: string) => {
     const updatedPlans = [...(dailyPlans[date] || [])];
     updatedPlans[index] = { ...updatedPlans[index], [field]: value };
     setDailyPlans({
@@ -50,44 +62,23 @@ export default function TravelPage() {
     });
   };
 
+  const handleSelectPlace = (place: { name: string; id: string }) => {
+    const date = startDate; // 예를 들어, 시작 날짜에 추가
+    handleDailyPlanChange(date, dailyPlans[date]?.length || 0, "activity", place.name);
+  };
+
   const getDatesInRange = (start: string, end: string) => {
     const startDate = new Date(start);
     const endDate = new Date(end);
     const dates = [];
-    for (
-      let d = startDate;
-      d <= endDate;
-      d.setDate(d.getDate() + 1)
-    ) {
-      dates.push(new Date(d).toISOString().split("T")[0]); // 날짜 포맷팅
+    for (let d = startDate; d <= endDate; d.setDate(d.getDate() + 1)) {
+      dates.push(new Date(d).toISOString().split("T")[0]);
     }
     return dates;
   };
 
-  useEffect(() => {
-    if (showMap) {
-      const selectedCity = localStorage.getItem("selectedCity");
-
-      // Type guard to check if selectedCity is a valid key in cities
-      const location = selectedCity && cities[selectedCity]
-        ? cities[selectedCity]
-        : cities["서울"];
-
-      const map = L.map("map").setView([location.lat, location.lng], 13);
-
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      }).addTo(map);
-
-      L.marker([location.lat, location.lng])
-        .addTo(map)
-        .bindPopup(`${selectedCity || "서울"}에서 여행을 시작하세요!`)
-        .openPopup();
-    }
-  }, [showMap]);
-
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex">
       <div className="bg-white p-8 rounded-md shadow-lg w-96">
         <h1 className="text-3xl font-bold mb-6">일정 만들기</h1>
         <form onSubmit={handleSubmit}>
@@ -131,6 +122,25 @@ export default function TravelPage() {
               required
             />
           </div>
+          <div className="mb-4">
+            <label htmlFor="city" className="block text-gray-700 font-bold mb-2">
+              도시 선택
+            </label>
+            <select
+              id="city"
+              value={selectedCity || ""}
+              onChange={(e) => setSelectedCity(e.target.value)}
+              className="border p-2 w-full rounded-md"
+              required
+            >
+              <option value="">도시를 선택하세요</option>
+              {Object.keys(cities).map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
+          </div>
           <button
             type="submit"
             className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 w-full"
@@ -138,11 +148,48 @@ export default function TravelPage() {
             일정 저장하기
           </button>
         </form>
+
+        <div className="mt-4">
+          <h2 className="text-xl font-bold mb-2">관광지 선택</h2>
+          <div>
+            <label>
+              <input type="checkbox" value="restaurant" onChange={(e) => {
+                const checked = e.target.checked;
+                setCategories((prev) => checked ? [...prev, 'restaurant'] : prev.filter(cat => cat !== 'restaurant'));
+              }} />
+              음식점 및 카페
+            </label>
+            <label>
+              <input type="checkbox" value="park" onChange={(e) => {
+                const checked = e.target.checked;
+                setCategories((prev) => checked ? [...prev, 'park'] : prev.filter(cat => cat !== 'park'));
+              }} />
+              공원
+            </label>
+            <label>
+              <input type="checkbox" value="tourist_attraction" onChange={(e) => {
+                const checked = e.target.checked;
+                setCategories((prev) => checked ? [...prev, 'tourist_attraction'] : prev.filter(cat => cat !== 'tourist_attraction'));
+              }} />
+              관광명소
+            </label>
+          </div>
+
+          <div>
+            {placeOptions.map((place) => (
+              <div key={place.id} className="flex justify-between mt-2">
+                <span>{place.name}</span>
+                <button onClick={() => handleSelectPlace(place)} className="bg-green-500 text-white px-2 py-1 rounded-md">
+                  선택
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* 날짜별 계획 */}
       {startDate && endDate && (
-        <div className="mt-8">
+        <div className="mt-8 flex-grow">
           <h2 className="text-xl font-bold mb-4">날짜별 계획</h2>
           {getDatesInRange(startDate, endDate).map((date) => (
             <div key={date} className="mb-6">
@@ -154,7 +201,9 @@ export default function TravelPage() {
                 시간 계획 추가
               </button>
               {dailyPlans[date]?.map((plan, index) => (
-                <div key={index} className="mt-2">
+                <div key={
+
+index} className="mt-2">
                   <input
                     type="time"
                     value={plan.time}
@@ -186,10 +235,18 @@ export default function TravelPage() {
         </div>
       )}
 
-      {showMap && (
-        <div className="mt-8 w-full h-96">
+      {selectedCity && (
+        <div className="mt-8 flex-grow">
           <h2 className="text-xl font-bold mb-4">여행 지도</h2>
-          <div id="map" style={{ height: "400px", width: "100%" }}></div>
+          <LoadScript googleMapsApiKey="AIzaSyBdkDWYMnnUPvxFhIxQrmUoOG5R6RNhXiE">
+            <GoogleMap
+              mapContainerStyle={containerStyle}
+              center={cities[selectedCity]}
+              zoom={13}
+            >
+              <Marker position={cities[selectedCity]} />
+            </GoogleMap>
+          </LoadScript>
         </div>
       )}
     </div>
