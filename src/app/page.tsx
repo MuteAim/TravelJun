@@ -19,14 +19,16 @@ export default function MainPage() {
 
   const handleCityClick = (city: string) => {
     console.log(`Selected city: ${city}`);
-    // 여기에서 원하는 동작을 추가할 수 있습니다. 예를 들어, 페이지를 이동하거나 데이터를 처리하는 로직.
     setSelectedCity(city);
+
+    // Save the selected city to localStorage
+    localStorage.setItem('selectedCity', city);
+
     setIsModalOpen(true);
   };
 
   return (
     <div className="flex h-screen">
-      {/* 왼쪽 */}
       <div className="flex-1 flex flex-col justify-center p-12 ml-20">
         <h1 className="text-7xl font-bold leading-tight mb-4">
           기존에 경험하지 못한 <br /> 새로운 여행 플래너
